@@ -45,10 +45,6 @@ public class MainActivity extends AppCompatActivity {
     static String websiteURL = "https://www.waivers.slickleagues.com"; // sets web url
     private static WebView webview;
     public static FrameLayout layoutNestedWebView;
-
-    private ValueCallback<Uri> mUploadMessage;
-    private final static int FILECHOOSER_RESULTCODE = 1;
-    public ValueCallback<Uri[]> uploadMessage;
     private BroadcastReceiver MyReceiver = null;
     public static RelativeLayout internetConnectionLayout;
     Dialog progressDialog;
@@ -69,34 +65,12 @@ public class MainActivity extends AppCompatActivity {
 
         MyReceiver = new MyReceiver();
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_DENIED) {
-                Log.d("permission", "permission denied to WRITE_EXTERNAL_STORAGE - requesting it");
-                String[] permissions = {Manifest.permission.WRITE_EXTERNAL_STORAGE};
-                requestPermissions(permissions, 1);
-            } else {
-                initViews();
-                broadcastIntent();
-            }
-        }
+        initViews();
+        broadcastIntent();
+
 
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == 1 && grantResults.length > 0) {
-            initViews();
-            broadcastIntent();
-        } else {
-            String[] permission = {Manifest.permission.WRITE_EXTERNAL_STORAGE};
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                requestPermissions(permission, 1);
-            }
-        }
-    }
 
     private void initViews() {
 
@@ -130,7 +104,6 @@ public class MainActivity extends AppCompatActivity {
         }
         webview.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
         webview.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        webview.addJavascriptInterface(new JavaScriptInterface(getApplicationContext()), "Android");
         webview.setSoundEffectsEnabled(true);
         webview.getSettings().setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
         webview.getSettings().setUseWideViewPort(true);
@@ -146,108 +119,14 @@ public class MainActivity extends AppCompatActivity {
 
 
         webview.setOverScrollMode(webview.OVER_SCROLL_NEVER);
-
-
-        webview.setWebChromeClient(new WebChromeClient() {
-
-            public boolean onShowFileChooser(WebView webview, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
-                // make sure there is no existing message
-                if (uploadMessage != null) {
-                    uploadMessage.onReceiveValue(null);
-                    uploadMessage = null;
-                }
-
-                uploadMessage = filePathCallback;
-
-                Intent intent = fileChooserParams.createIntent();
-                try {
-                    //  filePickerActivityLauncher.launch(intent);
-                    startActivityForResult(intent, 100);
-                } catch (Exception e) {
-                    uploadMessage = null;
-                    Log.e("TAG", "onShowFileChooser: " + e.getMessage());
-                    Toast.makeText(getApplicationContext(), "Cannot Open File Chooser " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    return false;
-                }
-                return true;
-
-            }
-
-
-        });
-
-        // download button click
-        webview.setDownloadListener(new DownloadListener() {
-            @Override
-            public void onDownloadStart(String downloadUrl, String userAgent,
-                                        String contentDisposition, String mimeType,
-                                        long contentLength) {
-
-                if (JavaScriptInterface.getBase64StringFromBlobUrl(downloadUrl).contains("console.log('It is not a Blob URL');")) {
-                    DownloadManager.Request request = new DownloadManager.Request(
-                            Uri.parse(downloadUrl));
-                    request.setMimeType(mimeType);
-                    String cookies = CookieManager.getInstance().getCookie(downloadUrl);
-                    request.addRequestHeader("cookie", cookies);
-                    request.addRequestHeader("User-Agent", userAgent);
-                    request.setDescription("Downloading File...");
-                    request.setTitle(URLUtil.guessFileName(downloadUrl, contentDisposition, mimeType));
-                    request.allowScanningByMediaScanner();
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                    request.setDestinationInExternalPublicDir(
-                            Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(
-                                    downloadUrl, contentDisposition, mimeType));
-                    DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                    dm.enqueue(request);
-                    Toast.makeText(getApplicationContext(), "Downloading File", Toast.LENGTH_LONG).show();
-
-                } else {
-                    webview.loadUrl(JavaScriptInterface.getBase64StringFromBlobUrl(downloadUrl));
-
-                }
-            }
-        });
-
-
+        webview.setWebChromeClient(new WebChromeClient());
         webview.setWebViewClient(new WebViewClientDemo());
         webview.loadUrl(websiteURL);
 
-//        layoutNestedWebView.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-//            @Override
-//            public void onRefresh() {
-//                webview.loadUrl(websiteURL);
-//                layoutNestedWebView.setRefreshing(false);
-//
-//            }
-//        });
 
     }
-//    }
 
 
-    // get image result when user select image
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        super.onActivityResult(requestCode, resultCode, intent);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (requestCode == 100 && resultCode == RESULT_OK) {
-                if (uploadMessage == null)
-                    return;
-                uploadMessage.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, intent));
-                uploadMessage = null;
-            } else {
-            }
-        } else if (requestCode == FILECHOOSER_RESULTCODE) {
-            if (null == mUploadMessage)
-                return;
-
-            Uri result = intent == null || resultCode != MainActivity.RESULT_OK ? null : intent.getData();
-            mUploadMessage.onReceiveValue(result);
-            mUploadMessage = null;
-        } else
-            Toast.makeText(getApplicationContext(), "Failed to Upload Image", Toast.LENGTH_LONG).show();
-    }
 
     public void tryAgainClick(View view) {
         if (isInternetAvailable(MainActivity.this)) {
@@ -265,8 +144,8 @@ public class MainActivity extends AppCompatActivity {
             super.onPageStarted(view, url, favicon);
             if (progressDialog != null && MainActivity.this != null) {
                 progressDialog.show();
-                findViewById(R.id.logo)
-                        .setVisibility(View.GONE);
+//                findViewById(R.id.logo)
+//                        .setVisibility(View.GONE);
 
             }
         }
@@ -325,18 +204,6 @@ public class MainActivity extends AppCompatActivity {
         if (webview.isFocused() && webview.canGoBack()) { //check if in webview and the user can go back
             webview.goBack(); //go back in webview
         } else { //do this if the webview cannot go back any further
-
-//            new AlertDialog.Builder(this) //alert the person knowing they are about to close
-//                    .setTitle("EXIT")
-//                    .setMessage("Are you sure.")
-//                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-//                        @Override
-//                        public void onClick(DialogInterface dialog, int which) {
-//                            finish();
-//                        }
-//                    })
-//                    .setNegativeButton("No", null)
-//                    .show();
 
             View myView = LayoutInflater.from(MainActivity.this).inflate(R.layout.custom_closing_dialog, null);
             AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
@@ -446,17 +313,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-//    @Override
-//    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
-//        super.onRestoreInstanceState(savedInstanceState);
-//        webViewSavedInstance = savedInstanceState;
-//        webview.restoreState(webViewSavedInstance);
-//    }
-//
-//    @Override
-//    protected void onSaveInstanceState(@NonNull Bundle outState) {
-//        super.onSaveInstanceState(outState);
-//        webview.saveState(outState);
-//    }
+
 
 }
