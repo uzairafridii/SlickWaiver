@@ -1,5 +1,7 @@
 plugins {
     id 'com.android.application'
+    id 'com.onesignal.androidsdk.onesignal-gradle-plugin'
+
 }
 
 android {
@@ -38,4 +40,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
     implementation 'com.airbnb.android:lottie:3.6.1'
+    implementation 'com.onesignal:OneSignal:[4.0.0, 4.99.99]'
+
 }

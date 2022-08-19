@@ -1,19 +1,13 @@
 package com.uzair.slickwaiver;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import android.Manifest;
 import android.app.Dialog;
-import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.ColorDrawable;
 import android.net.ConnectivityManager;
@@ -21,14 +15,10 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.webkit.CookieManager;
-import android.webkit.DownloadListener;
-import android.webkit.URLUtil;
-import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -45,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     static String websiteURL = "https://www.waivers.slickleagues.com"; // sets web url
     private static WebView webview;
     public static FrameLayout layoutNestedWebView;
-    private BroadcastReceiver MyReceiver = null;
+    private BroadcastReceiver myReceiver = null;
     public static RelativeLayout internetConnectionLayout;
     Dialog progressDialog;
 
@@ -55,18 +45,29 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // progress dialog
         progressDialog = new Dialog(this);
         progressDialog.getWindow().setBackgroundDrawable(new ColorDrawable(0));
         progressDialog.getWindow().setContentView(R.layout.custom_loading_layout);
         progressDialog.setCanceledOnTouchOutside(false);
+        //progressDialog.show();
+
         layoutNestedWebView = findViewById(R.id.swipeRefresh);
         internetConnectionLayout = findViewById(R.id.layout_net_connection);
         webview = findViewById(R.id.webView);
 
-        MyReceiver = new MyReceiver();
+        // init receiver
+        myReceiver = new MyReceiver();
 
-        initViews();
-        broadcastIntent();
+        new Handler()
+                .postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        initViews();
+                        broadcastIntent();
+                    }
+                },2500);
+
 
 
     }
@@ -142,10 +143,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             super.onPageStarted(view, url, favicon);
-            if (progressDialog != null && MainActivity.this != null) {
+            if (progressDialog != null && !progressDialog.isShowing() && MainActivity.this != null) {
                 progressDialog.show();
-//                findViewById(R.id.logo)
-//                        .setVisibility(View.GONE);
+                findViewById(R.id.logo)
+                        .setVisibility(View.GONE);
 
             }
         }
@@ -276,15 +277,15 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void broadcastIntent() {
-        registerReceiver(MyReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+        registerReceiver(myReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
     }
 
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (MyReceiver != null) {
-            unregisterReceiver(MyReceiver);
+        if (myReceiver != null) {
+            unregisterReceiver(myReceiver);
         }
     }
 
